@@ -1,0 +1,12 @@
+# Data Science Libraries
+pandas
+numpy
+matplotlib
+seaborn
+
+# Machine Learning Libraries
+scikit-learn
+
+# Jupyter Notebooks
+notebook
+
