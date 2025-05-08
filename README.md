@@ -26,7 +26,7 @@ data-lab/
 ├── notebooks/
 │   └── mini-projects/
 │
-├── projects/           # Personal or general end-to-end projects (soon)
+├── projects/           (soon)
 │
 └── uni-projects/
 ```
