@@ -41,6 +41,8 @@ data-lab/
 - ### 📈 Data Analysis and Visualisation
 
 - ### 🧩 Mini Projects
+  
+- ### 🎓 uni-projects/
 ---
 
 
