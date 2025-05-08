@@ -42,7 +42,7 @@ data-lab/
 
 - ### 🧩 Mini Projects
   
-- ### 🎓 uni-projects/
+- ### 🎓 uni-projects
 ---
 
 
