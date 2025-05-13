@@ -78,7 +78,7 @@ To improve predictive performance:
 
 ## 🧠 Key Takeaways
 
-* Modeling human behavior—especially dating motivations—is complex and imprecise
+* Modeling human behavior especially, dating motivations is complex and imprecise
 * Younger users with lower satisfaction levels may be more inclined to seek meaningful relationships
 * Even with limitations, exploratory modeling provides valuable insights and direction for future analysis
 
