@@ -1,0 +1,189 @@
+---
+output:
+  html_document:
+    df_print: paged
+knit: reprex::reprex_render
+---
+
+```{r}
+library(tidyverse)
+library(rpart)
+library(rpart.plot)
+library(dplyr)
+library(caret)
+library(magrittr)
+library(ggplot2)
+```
+
+```{r}
+data <- read_csv('data.csv')
+head(data)
+```
+```{r}
+table(data$Reason_for_Using)
+```
+```{r}
+data_selected <- data[,c("Age","Gender","Education","Occupation","Primary_App","Secondary_Apps","Usage_Frequency","Daily_Usage_Time","Reason_for_Using","Satisfaction","Preferred_Communication","Partner_Priorities")]
+data_selected
+```
+```{r}
+colSums(is.na(data_selected))
+```
+```{r}
+data_selected <- data_selected %>%
+  select(-Primary_App)
+colSums(is.na(data_selected))
+```
+```{r}
+data_selected <- data_selected %>% dplyr::mutate(Uses_Seconadry = 1-as.integer(Secondary_Apps=="None")) %>% select(-Secondary_Apps)
+data_selected$Uses_Seconadry
+```
+```{r}
+unique(data_selected$Daily_Usage_Time)
+```
+```{r}
+print(unique(data$Education))
+```
+
+```{r}
+data_selected$Daily_minutes <- sapply(data_selected$Daily_Usage_Time, function(x) {
+  if (grepl("hour", x)) {
+    return(as.numeric(gsub("[^0-9.]", "", x)) * 60)
+  } 
+  else if (grepl("minute", x)) {
+    return(as.numeric(gsub("[^0-9.]", "", x)))
+  } else {
+    NA
+  }
+})
+data_selected$Daily_minutes <- as.numeric(data_selected$Daily_minutes)
+data_selected <- data_selected %>% select(-Daily_Usage_Time)
+data_selected
+```
+```{r}
+str(data_selected)
+```
+```{r}
+cols = colnames(data_selected)
+for(col in cols){
+    if(!is.numeric(data_selected[[col]])){
+        data_selected[[col]] = as.factor(data_selected[[col]])
+    }
+}
+data_selected$Satisfaction = as.factor(data_selected$Satisfaction)
+data_selected
+```
+
+```{r}
+data_selected$Daily_minutes
+```
+```{r}
+data_selected$id <- 1:nrow(data_selected)
+set.seed(153435)
+train <- data_selected %>% dplyr::sample_frac(0.90)
+test  <- dplyr::anti_join(data_selected, train, by = 'id') %>% select(-id)
+train <- train %>% select(-id)
+```
+```{r}
+table(test$Reason_for_Using)
+```
+```{r}
+fit <- rpart(Reason_for_Using~ ., data = train, method = 'class')
+```
+
+```{r}
+predictions <- predict(fit, test, type = 'class')
+confusionMatrix(test$Reason_for_Using,predictions)
+```
+```{r}
+rpart.plot(fit, type = 3, extra = 101, under = TRUE, cex = 0.8, box.palette = "auto")
+```
+```{r}
+ggplot(train, aes(x=Preferred_Communication, group = Reason_for_Using, fill = Reason_for_Using)) + geom_bar()
+```
+```{r}
+ggplot(train, aes(x=Education, group = Reason_for_Using, fill = Reason_for_Using)) + geom_bar()
+```
+```{r}
+ggplot(train, aes(x=Age, group = Reason_for_Using, fill = Reason_for_Using)) + geom_histogram(bins =7)
+```
+```{r}
+ggplot(train, aes(x=Occupation, group = Reason_for_Using, fill = Reason_for_Using)) + geom_bar()
+```
+```{r}
+ggplot(train, aes(x=Uses_Seconadry, group = Reason_for_Using, fill = Reason_for_Using)) + geom_bar()
+```
+```{r}
+ggplot(train, aes(x=Usage_Frequency, group = Reason_for_Using, fill = Reason_for_Using)) + geom_bar()
+```
+```{r}
+ggplot(train, aes(x=Daily_minutes, group = Reason_for_Using, fill = Reason_for_Using)) + geom_bar()
+```
+```{r}
+ggplot(train, aes(x=Satisfaction, group = Reason_for_Using, fill = Reason_for_Using)) + geom_bar()
+```
+```{r}
+ggplot(train, aes(x=Partner_Priorities, group = Reason_for_Using, fill = Reason_for_Using)) + geom_bar()
+```
+```{r}
+fit <- rpart(Reason_for_Using~ Age, data = train, method = 'class')
+```
+
+```{r}
+predictions <- predict(fit, test, type = 'class')
+confusionMatrix(test$Reason_for_Using,predictions)
+```
+
+```{r}
+fit <- rpart(Reason_for_Using~ Age+Satisfaction, data = train, method = 'class')
+```
+
+```{r}
+predictions <- predict(fit, test, type = 'class')
+confusionMatrix(test$Reason_for_Using,predictions)
+```
+```{r}
+rpart.plot(fit, type = 3, extra = 101, under = TRUE, cex = 0.8, box.palette = "auto")
+```
+
+```{r}
+fit <- rpart(Reason_for_Using~ Age+Satisfaction +Education + Occupation + Usage_Frequency, data = train, method = 'class')
+```
+
+```{r}
+predictions <- predict(fit, test, type = 'class')
+confusionMatrix(test$Reason_for_Using,predictions)
+```
+```{r}
+rpart.plot(fit, type = 3, extra = 101, under = TRUE, cex = 0.8, box.palette = "auto")
+```
+```{r}
+fit <- rpart(Reason_for_Using~ Age+Satisfaction +Education + Occupation + Usage_Frequency, data = train, method = 'class', control =  rpart.control(minsplit = 5))
+```
+
+```{r}
+predictions <- predict(fit, test, type = 'class')
+table_mat <- table(test$Reason_for_Using, predictions)
+table_mat
+```
+```{r}
+ac_Test <- sum(diag(table_mat)) / sum(table_mat)
+print(paste('Accuracy for test is found to be', ac_Test))
+```
+```{r}
+library(rpart.plot)
+
+rpart.plot(
+  fit,
+  type = 4,
+  extra = 106,
+  under = TRUE,
+  cex = 0.9,
+  box.palette = "RdBu",
+  shadow.col = "gray",
+  fallen.leaves = TRUE,
+  faclen = 0
+)
+```
+
+
