@@ -1,7 +1,3 @@
-Sure! Here's a polished and professional rewrite of your README that improves clarity, flow, and tone, while keeping the original structure and content intact:
-
----
-
 # 📱 Dating App User Behavior Analysis
 
 This project analyzes user behavior from a dating app survey dataset to uncover motivations behind app usage. By leveraging decision tree models, it attempts to predict the **Reason for Using** the app based on demographic and usage characteristics.
