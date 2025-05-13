@@ -22,13 +22,10 @@ data-lab/
 ├── LICENSE
 ├── requirements.txt
 ├── data/
-│
 ├── notebooks/
-│   └── mini-projects/
-│
-├── projects/           (soon)
-│
-└── uni-projects/
+├── mini-projects/
+├── uni-projects/           (soon)
+└── projects/
 ```
 
 
