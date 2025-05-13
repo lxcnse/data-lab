@@ -1,6 +1,6 @@
 # 🧪 Data Lab
 
-**Data Lab** is a repository showcasing a portfolio of data science projects completed for academic purposes, self-learning, and personal interests. The projects are presented in the form of Jupyter notebooks, demonstrating my hands-on experience with data analysis, machine learning, and other data science techniques.
+**Data Lab** is a repository showcasing a portfolio of data science projects completed for academic purposes, self-learning, and personal interests. The projects are presented in the form of Jupyter notebooks.
 
 ---
 
