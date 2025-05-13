@@ -1,0 +1,431 @@
+---
+title: "Regresja liniowa prosta"
+output:
+  pdf_document:
+    toc: true
+  html_document:
+    theme: readable
+    toc: true
+    toc_float: true
+    df_print: paged
+---
+
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE}
+library(tidyverse)
+library(ISLR)
+library(lmtest)
+library(caret)
+```
+
+```{r, warning=FALSE}
+carseats <- tibble::as.tibble(ISLR::Carseats)
+head(carseats)
+```
+```{r}
+dim(carseats)
+```
+# Opis danych
+
+Zaczniemy od opisania naszego zbioru danych. Zbiór ten posiada 400 wierszy oraz 11 kolumn które dotyczą sprzedaży fotelików samochodowych. Opiszemy co oznaczają poszczególne kolumny.\
+**Sales**: Sprzedaż fotelików w tysiącach jednostek.  
+**CompPrice**: Cena konkurencyjnego produktu w danym regionie.  
+**Income**: Średni dochód w regionie (w tysiącach dolarów).  
+**Advertising**: Budżet reklamowy w danym regionie (w tysiącach dolarów).  
+**Population**: Populacja w regionie (w tysiącach).  
+**Price**: Cena fotelika.  
+**ShelveLoc**: Lokalizacja półki z fotelikami (kategorie: *Bad*, *Good*, *Medium*).  
+**Age**: Średni wiek mieszkańców w regionie.  
+**Education**: Średni poziom edukacji w regionie.  
+**Urban**: Zmienna wskazująca, czy region jest miejski (*Yes*) lub wiejski (*No*).  
+**US**: Zmienna wskazująca, czy region znajduje się w USA (*Yes*) lub poza USA (*No*).  
+Nastepnie policzymy podstawowe statystyki dla naszych danych.
+
+```{r}
+summary(carseats)
+```
+
+Zbadamy zależności między zmiennymi objaśniającymi, a zmienną Sales poprzez wykresy punktowe oraz obliczenie korelacji Pearsona.
+```{r}
+ggplot(carseats, aes(x = CompPrice, y = Sales)) + geom_point(size = 2, color = "black", alpha = 0.6) +
+  labs(title = 'Sprzedaż a cena konkurenta', x = 'Cena konkurencji', y = 'Sprzedaż [tys]') +  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5),  
+    panel.grid.minor = element_blank() 
+  )
+```
+```{r}
+cor(carseats$CompPrice, carseats$Sales)
+```
+Możemy zauważyć, że istnieje bardzo znikoma korelacja między sprzedażą a ceną u konkurencji. Co może sugerować, że cena konkurencji nie ma istotnego wpływu na sprzedaż w naszym przypadku.
+
+
+```{r}
+ggplot(carseats, aes(x = Income, y = Sales)) + geom_point(size = 2, color = "black", alpha = 0.6) +
+  labs(title = 'Sprzedaż a średni dochód', x = 'Średni dochód [tys $]', y = 'Sprzedaż [tys]') + theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5),  
+    panel.grid.minor = element_blank() 
+  )
+```
+```{r}
+cor(carseats$Income, carseats$Sales)
+```
+Sprzedaż oraz dochód w danym obszarze wykazują bardzo niską korelację dodatnią. Sugeruje to, że związek między zmiennymi jest znikomy.
+
+
+```{r}
+ggplot(carseats, aes(x = Advertising, y = Sales)) + geom_point(size = 2, color = "black", alpha = 0.6) +
+  labs(title = 'Sprzedaż a budżet na reklame', x = 'Budżet na reklame [tys $]', y = 'Sprzedaż [tys]') + theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5),  
+    panel.grid.minor = element_blank()
+  )
+```
+```{r}
+cor(carseats$Advertising, carseats$Sales)
+```
+Budżet reklamowy oraz sprzedaż wykazują wyraźniejszy związek niż dwie powyższe lecz nie jest on silny. Może wskazywać na to, że wieksze wydatki na reklamę mogą stymulować popyt.
+
+
+```{r}
+ggplot(carseats, aes(x = Population, y = Sales)) + geom_point(size = 2, color = "black", alpha = 0.6) +
+  labs(title = 'Sprzedaż a liczba osób w okolicy', x = 'populacja [tys]', y = 'Sprzedaż [tys]') + theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5),  
+    panel.grid.minor = element_blank() 
+  )
+```
+```{r}
+cor(carseats$Population, carseats$Sales)
+```
+Wielkosc populacji w danym regionie nie ma istotnego wpływu na sprzedaż.
+
+
+```{r}
+ggplot(carseats, aes(x = Price, y = Sales)) + geom_point(size = 2, color = "black", alpha = 0.6) +
+  labs(title = 'Sprzedaż a cena fotelika', x = 'Cena', y = 'Sprzedaż [tys]') + theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5),  
+    panel.grid.minor = element_blank() 
+  )
+```
+```{r}
+cor(carseats$Price, carseats$Sales)
+```
+Cena fotelika oraz sprzedaż wykazują ujemna korelacje. Co sugeruje, że wraz ze wzrostem ceny sprzedaż może mieć tendencje do spadków.
+
+
+```{r}
+ggplot(carseats, aes(x = Age, y = Sales)) + geom_point(size = 2, color = "black", alpha = 0.6) +
+  labs(title = 'Sprzedaż a średni wiek', x = 'Wiek', y = 'Sprzedaż [tys] ') + theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5),  
+    panel.grid.minor = element_blank() 
+  )
+```
+```{r}
+cor(carseats$Age, carseats$Sales)
+```
+średni wiek mieszkańców w regionie oraz sprzedaż wykazują słabą ujemną korelację, co może oznaczać, że na obszarach z wyższym średnim wiekiem może wystąpic mniejsza sprzedaż.
+
+```{r}
+ggplot(carseats, aes(x = Education, y = Sales)) + geom_point(size = 2, color = "black", alpha = 0.6) +
+  labs(title = 'Sprzedaż a poziom wykształcenia', x = 'poziom wykształcenia', y = 'Sprzedaż [tys]') + theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5),  
+    panel.grid.minor = element_blank() 
+  )
+```
+```{r}
+cor(carseats$Education, carseats$Sales)
+```
+Możemy zauważyć ze zmienne wykazują bardzo znikomą korelację ujemną wskazując na to, że poziom wykształcenia nie wpływa na sprzedaż. \
+Zobaczymy jak prezentują się zmienne kategorialne.
+
+```{r}
+ggplot(Carseats, aes(x=ShelveLoc, y=Sales, fill=ShelveLoc)) + geom_boxplot(outlier.color='red', outlier.size=3) +
+  scale_fill_brewer(palette = "Greys") +
+  labs(title = "Sprzedaż a lokalizacja półki", x = "Lokalizacja pólki", y = "Sprzedaż [tys]") +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5),  
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  )
+```
+Możemy zauważyć, że coraz lepsza lokalizacja półki w sklepie wykazuje najlepszą sprzedaż.
+
+
+```{r}
+ggplot(Carseats, aes(x=Urban, y=Sales)) + geom_boxplot(fill='grey', outlier.color='red', outlier.size=3) +
+  labs(title = "Sprzedaż a lokalizacja sklepu", x = "Lokalizacja w obszarze miejskim", y = "Sprzedaż [tys]") +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5),  
+    panel.grid.minor = element_blank() 
+  )
+```
+Znikoma różnica między sklepami znajdującymi się w mieście a sklepami poza miastem.
+
+
+```{r}
+ggplot(Carseats, aes(x=US, y=Sales)) + geom_boxplot(fill='grey', outlier.color='red', outlier.size=3) +
+  labs(title="Sprzedaż w zależności od znajdowania się w USA", x='USA', y='Sprzedaż [tys]') +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5),  
+    panel.grid.minor = element_blank()
+  )
+```
+Sklepy znajdujące się w USA mają minimalnie wyższą sprzedaż
+```{r}
+ggplot(Carseats, aes(x = interaction(Urban, US), y = Sales, fill = US)) + 
+  geom_boxplot(outlier.color = 'red', outlier.size = 3) + 
+  scale_fill_brewer(palette = "Greys") +
+  labs(title = "Sprzedaż a lokalizacja sklepu (obecność w obszarze miejskim i USA)", 
+       x = "Lokalizacja sklepu (Urban + US)", 
+       y = "Sprzedaż [tys]") + 
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 16),  
+    axis.title = element_text(face = "bold", size = 14),
+    panel.grid.major = element_line(color = "gray", size = 0.5),  
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+Możemy zauważyć, że sprzedaż sklepów znajdujących się w USA jest znacznie wieksza niż sklepów nie znajdujących się w USA. Również róznica występuje gdy sklep znajduję sie w USA ale nie jest w obszasze miejskim, wiekszą mediane sprzedaży obserwujemy w przypadku gdy sklep nie znajduje się w obszarze miejskim.\
+Podsumowując wstepne zapoznanie się ze zbiorem danych:
+```{r}
+cor(Carseats %>% select_if(is.numeric))["Sales", -which(colnames(Carseats) == "Sales")]
+```
+
+Zwróćmy uwagę na to, że korelacja zmiennej Sales z zmiennymi CompPrice, Population i Education jest bliska 0, więc już teraz możemy stwierdzić, że modele regresji liniowej prostej z tymi zmiennymi objaśniającymi nie będą miały dobrej jakości.
+
+# Dopasowanie oraz analiza modeli
+Dopasujemy teraz modele regresji liniowej przewidujące wartość zmiennej Sales oraz zbadamy poniższe założenia:
+
+1. Zależność liniowa między zmiennymi
+2. Rozkład reszt mający rozkład normalny
+3. Zerowa średnia reszt
+4. Niezależność reszt
+5. Homoskedastyczność stała wariancja błędów
+
+```{r}
+#podzielenie zbioru na zbiór treningowy i zbiór testowy
+set.seed(44)
+partition <- caret::createDataPartition(carseats$Sales, list=FALSE, p=0.75)
+carseats_train <- carseats[partition,]
+carseats_test <- carseats[-partition,]
+```
+
+```{r}
+print(dim(carseats_train))
+print(dim(carseats_test))
+```
+
+```{r}
+MAPE <- function(y_actual, y_predicted) {
+  y_actual[y_actual == 0] <- NA  # Obsługa potencjalnych zer w mianowniku
+  return(mean(abs((y_actual - y_predicted) / y_actual), na.rm = TRUE) * 100)
+}
+RMSE <- function(y_actual, y_predicted){
+  return(sqrt(mean((y_actual-y_predicted)^2)))
+}
+R_2 <- function(y_actual, y_predicted) {
+  
+  ss_total <- sum((y_actual - mean(y_actual))^2)
+  ss_residual <- sum((y_actual - y_predicted)^2)
+  
+  r_squared <- 1 - (ss_residual / ss_total)
+  
+  return(r_squared)
+}
+```
+## Regresja liniowa dla price
+
+```{r}
+price_model <- lm(Sales ~ Price, data=carseats_train)
+```
+### Sprawdzenie zależości liniowej:
+```{r}
+cor.test(carseats_train$Price, carseats_train$Sales)
+```
+```{r}
+ggplot(carseats_train, aes(x=Price, y=Sales)) + geom_point(size = 1.5, color = "black", alpha = 0.6) + 
+  geom_smooth(method='lm' ,formula=y~x, size=1, se=FALSE) +
+  labs(title='Wykres zależności ceny od sprzedaży') + theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5),  
+    panel.grid.minor = element_blank() 
+  )
+```
+Korelacja oraz wykres wskazują na negatywną korelację.
+
+### Sprawdzenie rozkładu reszt:
+```{r}
+ggplot(price_model, aes(x=.resid)) + geom_histogram(bins=30) +
+  labs(title='Histogram reszt z modelu', x='Reszty', y='Częstość') + theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5)  
+  )
+```
+```{r}
+ggplot(price_model, aes(sample = .resid)) + 
+  geom_qq(size = 1.5, color = "black", alpha = 0.6) + 
+  geom_qq_line() + 
+  labs(title = 'Wykres kwartyl-kwartyl reszt modelu', 
+       x = 'Kwartyle teoretyczne', 
+       y = 'Kwartyle próbkowe') + 
+  theme_minimal(base_size = 12) + 
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5)
+  )
+```
+```{r}
+shapiro.test(price_model$residuals)
+```
+Powyższcze wykresy oraz test wskazują, że większość reszt odpowiada rozkładowi normalnemu.
+### Sprawdzenie zerowej średniej reszt:
+```{r}
+t.test(price_model$residuals)
+```
+Test wykazał, że należy odrzucić hipotezę alternatywną oraz możemy stwierdzić, że średnia reszt jest równa zero.
+```{r}
+ggplot(price_model, aes(.fitted, .resid)) + geom_point(size = 1.5, color = "black", alpha = 0.6) + stat_smooth(method='loess', formula=y~x, se=FALSE) + 
+  geom_hline(yintercept=0, linetype='dashed', color='red') +
+  labs(title='Wykres zależności reszt od dopasowanych wartości', x='Dopasowane wartości',y='Reszty') + theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5)  
+  )
+```
+
+### Sprawdzenie niezależności reszt:
+```{r}
+lmtest::dwtest(price_model)
+```
+Przeprowadzony test wykazał, że p-value jest większe od \(\alpha\) = 0,05 więc nie mamy dowodów, aby odrzucić hipotezę o niezależności reszt. Wartośc DW jest bliska 2 co wskazuje na brak autokorelacji.Możemy wnioskować,że założenie o niezależności reszt jest spełnione dla naszego modelu.
+
+### Sprawdzenie homoskedatyczność:
+```{r}
+ggplot(price_model, aes(.fitted, sqrt(abs(.stdresid)))) + geom_point(size = 1.5, color = "black", alpha = 0.6) + stat_smooth(method='loess', formula=y~x, se=FALSE) +
+  labs(title='Zależność pierwiastka standaryzowanych reszt od dopasowanych wartości', x='Dopasowane wartości', y='Pierwiastek standaryzowanych reszt') + theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5)  
+  )
+```
+```{r}
+lmtest::bptest(price_model)
+```
+Wartość p-value wyniosłą znacznie więcej niż \(\alpha\) = 0,05, oznacza to, że nie mamy istotnych dowodów heteroskedastyczności. Dlatego też możemy wnioskować,że założenie o homoskedastyczności jest prawdziwe dla naszego modelu.
+
+### Podsumowanie modelu price:
+Nasz model spełnia klasyczne założenia modelu regresji.
+
+```{r}
+price_model_s <- summary(price_model)
+price_model_s
+```
+```{r}
+test_predictions <- predict(price_model, carseats_test)
+```
+```{r}
+cat('Zbiór treningowy:', '\n-MAPE:',MAPE(carseats_train$Sales, predict(price_model, carseats_train)), '\n-RMSE:', RMSE(carseats_train$Sales, predict(price_model, carseats_train)),'\n-R^2:', price_model_s$r.squared)
+```
+```{r}
+cat('Zbiór testowy:', '\n-MAPE:',MAPE(carseats_test$Sales, test_predictions), '\n-RMSE:', RMSE(carseats_test$Sales, test_predictions),'\n-R^2:',R_2(carseats_test$Sales, test_predictions))
+```
+## Regresja liniowa dla advertising
+zakladamy ze model spelnia zalozenia
+```{r}
+adv_model <- lm(Sales ~ Advertising, data=carseats_train)
+```
+```{r}
+adv_model_s <- summary(adv_model)
+adv_model_s
+```
+```{r}
+test_predictions <- predict(adv_model, carseats_test)
+```
+```{r}
+cat('Zbiór treningowy:', '\n-MAPE:',MAPE(carseats_train$Sales, predict(adv_model, carseats_train)), '\n-RMSE:', RMSE(carseats_train$Sales, predict(adv_model, carseats_train)),'\n-R^2:', adv_model_s$r.squared)
+```
+```{r}
+cat('Zbiór testowy:', '\n-MAPE:',MAPE(carseats_test$Sales, test_predictions), '\n-RMSE:', RMSE(carseats_test$Sales, test_predictions),'\n-R^2:', R_2(carseats_test$Sales,test_predictions))
+```
+
+Model wykazuje lepsze wyniki niż poprzedni model, choć nadal jego dokładność jest ograniczona. W zbiorze treningowym, MAPE wynosi 56,36%, co wskazuje na średni błąd prognozy wynoszący 56%, a RMSE to 2,70, co oznacza, że model wciąż nie jest precyzyjny. Wartość \( R^2 \) w zbiorze treningowym wynosi 0,049, co wskazuje, że model wyjaśnia tylko około 5% zmienności sprzedaży, co nadal jest stosunkowo niskim wynikiem.
+
+Zbiór testowy wykazuje nieco lepsze wyniki w porównaniu do zbioru treningowego: MAPE wynosi 52,55%, RMSE to 2,79, a \( R^2 \) wynosi 0,127. Chociaż \( R^2 \) na zbiorze testowym jest nieco wyższe, nadal oznacza to, że model nie wyjaśnia większej części zmienności sprzedaży.
+
+Mimo że zmienna Advertising ma statystycznie istotny wpływ na sprzedaż, jakość modelu pozostaje niewystarczająca, aby uznać go za precyzyjny.
+
+## Regresja liniowa dla age
+zakladamy ze model spelnia zalozenia
+```{r}
+age_model <- lm(Sales ~ Age, data=carseats_train)
+```
+```{r}
+age_model_s <- summary(age_model)
+age_model_s
+```
+```{r}
+test_predictions <- predict(age_model, carseats_test)
+```
+
+
+```{r}
+cat('Zbiór treningowy:', '\n-MAPE:',MAPE(carseats_train$Sales, predict(age_model, carseats_train)), '\n-RMSE:', RMSE(carseats_train$Sales, predict(age_model, carseats_train)),'\n-R^2:', age_model_s$r.squared)
+```
+```{r}
+cat('Zbiór testowy:', '\n-MAPE:',MAPE(carseats_test$Sales, test_predictions), '\n-RMSE:', RMSE(carseats_test$Sales, test_predictions),'\n-R^2:',R_2(carseats_test$Sales, test_predictions))
+```
+W zbiorze treningowym MAPE wynosi 56,58%, co oznacza średni błąd prognozy na poziomie około 57%. RMSE wynosi 2,69, a \( R^2 \) osiąga wartość 0,057, co oznacza, że model wyjaśnia tylko około 5,7% zmienności w danych. Zmienna Age jest statystycznie istotna, co sugeruje, że wpływa na prognozowaną sprzedaż, ale jej wpływ jest ograniczony.
+
+Zbiór testowy pokazuje marginalne pogorszenie wyników: MAPE wynosi 55,77%, RMSE osiąga wartość 2,91, a \( R^2 \) spada do 0,044, co oznacza, że model nie poprawia swojej wydajności na nowych danych.
+
+Ogólnie, chociaż model wskazuje na pewną istotność zmiennej Age, jakość prognoz jest słaba, z niskim \( R^2 \) i wysokimi błędami prognozy. Model nie spełnia oczekiwań w kontekście precyzyjności przewidywań.
+
+# Podsumowanie
+
+Model oparty na zmiennej **price** (cena) wydaje się być najlepszym modelem w tym przypadku. Uzyskał najniższy **MAPE** w zbiorze testowym (41,02%) oraz stosunkowo wysokie wartości \(R^2\) (0,1748) w porównaniu do innych zmiennych. 
+
+
+
+
+
+
+
+
+

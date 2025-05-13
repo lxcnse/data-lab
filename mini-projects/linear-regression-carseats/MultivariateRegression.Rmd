@@ -1,0 +1,365 @@
+---
+title: "Regresja liniowa wieloraka"
+output:
+  pdf_document:
+    toc: true
+  html_document:
+    theme: readable
+    toc: true
+    toc_float: true
+    df_print: paged
+---
+
+
+```{r, message = FALSE, warning = FALSE}
+library(tidyverse)
+library(ISLR)
+library(caret)
+library(ggcorrplot)
+library(car)
+library(broom)
+carseats <- tibble::as_tibble(ISLR::Carseats)
+head(carseats)
+```
+```{r}
+# Podział zbioru na zbiór treningowy i testowy
+set.seed(44)
+partition <- caret::createDataPartition(carseats$Sales, list=FALSE, p=0.75)
+carseats_train <- carseats[partition,]
+carseats_test <- carseats[-partition,]
+```
+
+```{r}
+model_summary <- function(model, test_data, test_y) {
+  model_glance <- broom::glance(model)
+  model_augment <- broom::augment(model)
+  train_mae <- mean(abs(model_augment$.resid))
+  train_mape <- mean(abs(model_augment$.resid/dplyr::pull(model_augment, var=1)))*100
+  predicted_y <- predict(model, test_data)
+  test_rmse <- sqrt(mean((test_y - predicted_y)^2))
+  test_mae <- mean(abs(test_y - predicted_y))
+   test_mape <- mean(abs((test_y - predicted_y)/test_y))*100
+  
+  cat("\n=========================================\n")
+  cat("            Podsumowanie modelu    \n")
+  cat("=========================================\n\n")
+  cat("Metryki treningowe:\n")
+  cat("-----------------------------------------\n")
+  cat(sprintf("  R-squared (R²):         %.4f\n", model_glance$r.squared))
+  cat(sprintf("  Adjusted R-squared:    %.4f\n", model_glance$adj.r.squared))
+  cat(sprintf("  Kryterium informacyjne Akaikego (AIC): %.2f\n", model_glance$AIC))
+  cat("-----------------------------------------\n\n")
+  cat("Charakterystyki \"out-of-sample\":\n")
+  cat("======================================================================\n")
+  cat(sprintf("  RMSE (trening):         %.4f    |    RMSE (test): %.4f\n", model_glance$sigma, test_rmse))
+  cat(sprintf("  MAE (trening):          %.4f    |    MAE (test):  %.4f\n", train_mae, test_mae))
+  cat(sprintf("  MAPE (trening):         %.2f%%    |    MAPE (test): %.2f%%\n", train_mape, test_mape))
+  cat("======================================================================\n\n")
+}
+```
+
+## Korelacje między zmiennymi ilościowymi
+
+```{r}
+numeric_vars <- carseats[, sapply(carseats, is.numeric)]
+cor_matrix <- cor(numeric_vars)
+
+ggcorrplot(cor_matrix, 
+           type = "lower",
+           lab = TRUE,
+           lab_size = 3,
+           title = "Macierz korelacji dla zmiennych ilościowych",
+           legend.title = "Korelacja")
+```
+Na podstawie macierzy korelacji wybieramy zmienne do modelu, mając na uwadze problemy związane z współliniowością.
+
+## Pierwszy model
+```{r}
+model <- lm(Sales ~ Advertising + ShelveLoc + Price, data = carseats_train)
+summary(model)
+```
+```{r}
+# Liniowa niezależność zmiennych objaśniających
+vif(model)
+``` 
+Wszystkie zamienne w modelu wykazują bardzo niskie wartości, co wskazuje na bardzo niski poziom kolinearności.
+
+##  Założenia modelu regresji wielorakiej
+
+```{r}
+# liniowa zależność między zmienną objaśnianą, a objaśniającą postaci
+ggplot(augment(model), aes(.fitted, .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    x = "Wartości dopasowane",
+    y = "Reszty",
+    title = "Reszty vs Wartości dopasowane"
+  ) + theme_minimal(base_size = 12) + 
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5)
+  )
+```
+Na wykresie nie widać wyraźnych wzorców ani zakrzywień, co wskazuje na poprawność założenia o liniowej zależności. Punkty są równomiernie rozmieszczone wokół poziomej linii, co dodatkowo sugeruje, że zmienne objaśniające oddziałują na zmienną zależną w sposób liniowy.
+
+
+
+
+```{r}
+# średnia wektora losowego równa 0
+t.test(model$residuals)
+```
+Test wykazał, że należy odrzucić hipotezę alternatywną oraz możemy przyjąć, że prawdziwa jest hipoteza zerowa mówiąca, że średnia reszt jest równa zero.
+```{r}
+# Sprawdzenie rozkładu reszt
+ggplot(model, aes(x=.resid)) + geom_histogram(bins=30) +
+  labs(title='Histogram reszt z modelu', x='Reszty', y='Częstość') + theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5)  
+  )
+```
+```{r}
+ggplot(model, aes(sample = .resid)) + 
+  geom_qq(size = 1.5, color = "black", alpha = 0.6) + 
+  geom_qq_line() + 
+  labs(title = 'Wykres kwartyl-kwartyl reszt modelu', 
+       x = 'Kwartyle teoretyczne', 
+       y = 'Kwartyle próbkowe') + 
+  theme_minimal(base_size = 12) + 
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5)
+  )
+```
+```{r}
+shapiro.test(model$residuals)
+```
+Na histogramie możemy zauważyć lekkie odchylenie reszt modelu, wykres Q-Q pokazuje jednak, że większość punktów skupia się na prostej. Test Shapiro-wilka wskazuje na brak podstaw do odrzucenia hipotezy zerowej mówiącej, że reszty modelu pochodzą z rodkładu normalnego. Więc możemy stwierdzić, że reszty są normalne.
+```{r}
+# Sprawdzenie niezależności reszt
+lmtest::dwtest(model)
+```
+
+
+```{r}
+# Homoskedastyczność
+ggplot(model, aes(.fitted, sqrt(abs(.stdresid)))) + geom_point(size = 1.5, color = "black", alpha = 0.6) + stat_smooth(method='loess', formula=y~x, se=FALSE) +
+  labs(title='Zależność pierwiastka standaryzowanych reszt od dopasowanych wartości', x='Dopasowane wartości', y='Pierwiastek standaryzowanych reszt') + theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5)  
+  )
+```
+Punkty na wykresie są równomiernie rozproszone wokół linii, co sugeruje, że wariancja reszt nie zmienia się znacząco w miarę wzrostu wartości dopasowanych.
+```{r}
+lmtest::bptest(model)
+```
+Wartość p-value wyniosłą znacznie więcej niż \(\alpha\) = 0,05, oznacza to, że nie mamy istotnych dowodów heteroskedastyczności. Dlatego też możemy wnioskować,że założenie o homoskedastyczności jest prawdziwe dla naszego modelu.
+
+```{r}
+model_summary(model, carseats_test, carseats_test$Sales)
+```
+- **Interpretacja**: 
+  - Bardzo niskie p-value oznacza, że co najmniej jedna zmienna w modelu mocno wpływa na zmienną **Sales**.
+  - Ujemna korelacja między **Price** a **Sales** wskazuje na spadek sprzedaży wraz ze wzrostem ceny.
+  - Największy wpływ na sprzedaż ma dobra lokalizacja półki w sklepie (**ShelveLoc**).
+  - Wartości **RMSE** dla treningu i testu są bardzo zbliżone, co sugeruje, że model dobrze generalizuje na danych testowych i nie ma nadmiernego dopasowania.
+  - Wartości **MAE** na danych treningowych i testowych są bardzo zbliżone, co jest pozytywnym sygnałem, wskazującym na to, że model dobrze przewiduje zarówno w zbiorze treningowym, jak i testowym.
+  - Wartość **MAPE** na danych treningowych wynosi 36.21%, co sugeruje, że model jest dość niedokładny. Wartość **MAPE** na danych testowych wynosi Inf% co wskazuje na to, że model prawdopodobnie ma problemy z wystepującymi zerami.
+
+## Pełny model
+```{r}
+full_model <- lm(Sales ~ ., data = carseats_train)
+summary(full_model)
+```
+##  Założenia modelu regresji wielorakiej
+```{r}
+# liniowa zależność między zmienną objaśnianą, a objaśniającą postaci
+ggplot(augment(full_model), aes(.fitted, .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    x = "Wartości dopasowane",
+    y = "Reszty",
+    title = "Reszty vs Wartości dopasowane"
+  ) + theme_minimal(base_size = 12) + 
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5)
+  )
+```
+Na wykresie nie widać wyraźnych wzorców ani zakrzywień, co wskazuje na poprawność założenia o liniowej zależności. Punkty są równomiernie rozmieszczone wokół poziomej linii, co dodatkowo sugeruje, że zmienne objaśniające oddziałują na zmienną zależną w sposób liniowy.
+
+```{r}
+# średnia wektora losowego równa 0
+t.test(full_model$residuals)
+```
+Test wykazał, że należy odrzucić hipotezę alternatywną oraz możemy przyjąć, że prawdziwa jest hipoteza zerowa mówiąca, że średnia reszt jest równa zero.
+
+```{r}
+# Sprawdzenie rozkładu reszt
+ggplot(full_model, aes(x=.resid)) + geom_histogram(bins=30) +
+  labs(title='Histogram reszt z modelu', x='Reszty', y='Częstość') + theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5)  
+  )
+```
+```{r}
+ggplot(full_model, aes(sample = .resid)) + 
+  geom_qq(size = 1.5, color = "black", alpha = 0.6) + 
+  geom_qq_line() + 
+  labs(title = 'Wykres kwartyl-kwartyl reszt modelu', 
+       x = 'Kwartyle teoretyczne', 
+       y = 'Kwartyle próbkowe') + 
+  theme_minimal(base_size = 12) + 
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5)
+  )
+```
+```{r}
+shapiro.test(full_model$residuals)
+```
+Na histogramie możemy zauważyć lekkie odchylenie reszt modelu, wykres Q-Q pokazuje jednak, że większość punktów skupia się na prostej. Test Shapiro-wilka wskazuje na brak podstaw do odrzucenia hipotezy zerowej mówiącej, że reszty modelu pochodzą z rodkładu normalnego. Więc możemy stwierdzić, że reszty są normalne.
+
+```{r}
+# Sprawdzenie niezależności reszt
+lmtest::dwtest(full_model)
+```
+
+```{r}
+# Homoskedastyczność
+ggplot(full_model, aes(.fitted, sqrt(abs(.stdresid)))) + geom_point(size = 1.5, color = "black", alpha = 0.6) + stat_smooth(method='loess', formula=y~x, se=FALSE) +
+  labs(title='Zależność pierwiastka standaryzowanych reszt od dopasowanych wartości', x='Dopasowane wartości', y='Pierwiastek standaryzowanych reszt') + theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5)  
+  )
+```
+
+Punkty na wykresie są równomiernie rozproszone wokół linii, co sugeruje, że wariancja reszt nie zmienia się znacząco w miarę wzrostu wartości dopasowanych.
+```{r}
+lmtest::bptest(full_model)
+```
+Wartość p-value wyniosłą znacznie więcej niż \(\alpha\) = 0,05, oznacza to, że nie mamy istotnych dowodów heteroskedastyczności. Dlatego też możemy wnioskować,że założenie o homoskedastyczności jest prawdziwe dla naszego modelu.
+
+
+
+```{r}
+model_summary(full_model, carseats_test, carseats_test$Sales)
+```
+```{r}
+vif(full_model)
+```
+Pełny model wyjaśnia 85% zmienności w danych. Kryterium AIC sugeruje, że jest najlepiej dopasowany, ale jego złożoność może być problematyczna.
+
+## Model uproszczony
+```{r}
+model4 <- lm(Sales ~ CompPrice + Income + Advertising + Price + ShelveLoc + Age, data = carseats_train)
+summary(model4)
+```
+##  Założenia modelu regresji wielorakiej
+```{r}
+# liniowa zależność między zmienną objaśnianą, a objaśniającą postaci - trzeba dopisac
+ggplot(augment(model4), aes(.fitted, .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    x = "Wartości dopasowane",
+    y = "Reszty",
+    title = "Reszty vs Wartości dopasowane"
+  ) + theme_minimal(base_size = 12) + 
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5)
+  )
+```
+Na wykresie nie widać wyraźnych wzorców ani zakrzywień, co wskazuje na poprawność założenia o liniowej zależności. Punkty są równomiernie rozmieszczone wokół poziomej linii, co dodatkowo sugeruje, że zmienne objaśniające oddziałują na zmienną zależną w sposób liniowy.
+
+```{r}
+# średnia wektora losowego równa 0
+t.test(model4$residuals)
+```
+Test wykazał, że należy odrzucić hipotezę alternatywną oraz możemy przyjąć, że prawdziwa jest hipoteza zerowa mówiąca, że średnia reszt jest równa zero.
+
+```{r}
+# Sprawdzenie rozkładu reszt
+ggplot(model4, aes(x=.resid)) + geom_histogram(bins=30) +
+  labs(title='Histogram reszt z modelu', x='Reszty', y='Częstość') + theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5)  
+  )
+```
+```{r}
+ggplot(model4, aes(sample = .resid)) + 
+  geom_qq(size = 1.5, color = "black", alpha = 0.6) + 
+  geom_qq_line() + 
+  labs(title = 'Wykres kwartyl-kwartyl reszt modelu', 
+       x = 'Kwartyle teoretyczne', 
+       y = 'Kwartyle próbkowe') + 
+  theme_minimal(base_size = 12) + 
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5)
+  )
+```
+```{r}
+shapiro.test(model4$residuals)
+```
+Na histogramie możemy zauważyć lekkie odchylenie reszt modelu, wykres Q-Q pokazuje jednak, że większość punktów skupia się na prostej. Test Shapiro-wilka wskazuje na brak podstaw do odrzucenia hipotezy zerowej mówiącej, że reszty modelu pochodzą z rodkładu normalnego. Więc możemy stwierdzić, że reszty są normalne.
+
+```{r}
+# Sprawdzenie niezależności reszt
+lmtest::dwtest(model4)
+```
+
+```{r}
+# Homoskedastyczność
+ggplot(model4, aes(.fitted, sqrt(abs(.stdresid)))) + geom_point(size = 1.5, color = "black", alpha = 0.6) + stat_smooth(method='loess', formula=y~x, se=FALSE) +
+  labs(title='Zależność pierwiastka standaryzowanych reszt od dopasowanych wartości', x='Dopasowane wartości', y='Pierwiastek standaryzowanych reszt') + theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), 
+    axis.title = element_text(face = "bold"), 
+    panel.grid.major = element_line(color = "gray", size = 0.5)  
+  )
+```
+
+Punkty na wykresie są równomiernie rozproszone wokół linii, co sugeruje, że wariancja reszt nie zmienia się znacząco w miarę wzrostu wartości dopasowanych.
+```{r}
+lmtest::bptest(model4)
+```
+Wartość p-value wyniosłą znacznie więcej niż \(\alpha\) = 0,05, oznacza to, że nie mamy istotnych dowodów heteroskedastyczności. Dlatego też możemy wnioskować,że założenie o homoskedastyczności jest prawdziwe dla naszego modelu.
+
+```{r}
+model_summary(model4, carseats_test, carseats_test$Sales)
+```
+```{r}
+vif(model4)
+```
+Model uproszczony wyjaśnia tyle samo zmienności co pełny model (R²=0.85), ale ma niższą wartość AIC (874.44 vs. 879.11). RMSE wskazuje na lepszą predykcję.
+
+## Porównanie z regresją prostą
+Przypominając wyniki z części pierwszej, model oparty na zmiennej **Price** wyglądał następująco:
+
+```{r}
+price_model <- lm(Sales ~ Price, data = carseats_train)
+```
+```{r}
+model_summary(price_model, carseats_test, carseats_test$Sales)
+```
+Model regresji wielorakiej znacząco przewyższa model prosty w zakresie dopasowania (R² dla modeli wielorakich wynosi od 0.60 do 0.85, podczas gdy dla modelu prostego tylko 0.35).
