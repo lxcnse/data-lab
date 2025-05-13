@@ -38,7 +38,7 @@ data-lab/
 
 - ### 🧩 Mini Projects
   - R
-      - [Dating App User Behavior Analysis](https://github.com/lxcnse/data-lab/tree/main/mini-projects/dating_site_goals)
+      - [Dating App User Behavior Analysis](https://github.com/lxcnse/data-lab/tree/main/mini-projects/dating_site_goals): This project analyzes dating app survey data to predict users Reasons for Using the app based on demographics and usage patterns using decision tree models.
 ---
 
 
