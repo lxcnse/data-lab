@@ -52,8 +52,9 @@ Visualizations were used to investigate how the **Reason for Using** relates to:
 * Built classification trees using `rpart()` to predict `Reason_for_Using`
 * Evaluated performance with `confusionMatrix()` and overall accuracy
 * Tested multiple model configurations by adjusting features and tuning parameters such as `minsplit`
-* 
+  
 <img src="decision_tree.png"/>
+
 ---
 
 ## ❓ Why the Model Struggled
