@@ -37,8 +37,8 @@ data-lab/
 - ### 📈 Data Analysis and Visualisation
 
 - ### 🧩 Mini Projects
-  
-- ### 🎓 uni-projects
+  - R
+      - [Dating App User Behavior Analysis](https://github.com/lxcnse/data-lab/tree/main/mini-projects/dating_site_goals)
 ---
 
 
