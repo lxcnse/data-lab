@@ -32,9 +32,11 @@ data-lab/
 
 ## 🚀 Projects 
 
-- ### 📊  Machine Learning
+- ### 📊  Machine Learning:
+    - Python
+        - [Predicting Boston Houses Prices](https://github.com/lxcnse/data-lab/tree/main/mini-projects/boston_housing): Built a model to predict Boston housing prices and identify optimal selling points using machine learning
 
-- ### 📈 Data Analysis and Visualisation
+- ### 📈 Data Analysis and Visualisation:
 
 - ### 🧩 Mini Projects
   - R
