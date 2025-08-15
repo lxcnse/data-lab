@@ -2,13 +2,6 @@
 
 **Data Lab** is a repository showcasing a portfolio of data science projects completed for academic purposes, self-learning, and personal interests. The projects are presented in the form of Jupyter notebooks.
 
-## 📌 Goals
-
-- Track my progress in learning data science
-- Build a portfolio of real-world projects
-- Experiment with data analysis and machine learning techniques
-- Practice using Python, Pandas, Scikit-learn, Matplotlib, and more
-
 ## 🚀 Projects
 
 - ### 📊 Machine Learning:
@@ -22,6 +15,7 @@
   - R
     - [Dating App User Behavior Analysis](https://github.com/lxcnse/data-lab/tree/main/mini-projects/dating_site_goals): This project analyzes dating app survey data to predict users Reasons for Using the app based on demographics and usage patterns using decision tree models.
     - [Linear Regression Project](https://github.com/lxcnse/data-lab/tree/main/mini-projects/linear-regression-carseats): Performing a linear regression analysis on the Carseats dataset from the ISLR package. The goal of the analysis is to examine the relationship between explanatory variables and the sales of car seats.
+    - [Logistic Regression](https://github.com/lxcnse/data-lab/tree/main/titanic-classification): Titanic classification 
 
 ---
 
